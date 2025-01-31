@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, DateTime, Date, Column, func
+from sqlalchemy import Integer, String, DateTime, Date, Column, func, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import ForeignKey
@@ -30,3 +30,4 @@ class User(Base):
     hashed_password = Column(String)
     created_at = Column(DateTime, default=func.now())
     avatar = Column(String(255), nullable=True)
+    is_verified = Column(Boolean, default=False)

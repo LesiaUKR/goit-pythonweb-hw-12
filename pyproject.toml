@@ -20,6 +20,9 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 libgravatar = "^1.0.4"
 python-multipart = "^0.0.20"
+fastapi-mail = "^1.4.2"
+slowapi = "^0.1.9"
+cloudinary = "^1.42.1"
 
 
 [build-system]
