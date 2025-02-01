@@ -2,17 +2,19 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from starlette.responses import JSONResponse
+
+from src.api import auth, contacts, users, utils
 from src.services.limiter import limiter
 
-# Імпортуємо маршрути
-from src.api import contacts, utils, auth, users
-
+# Create FastAPI application instance
 app = FastAPI()
 
+# Allow all origins for CORS
 origins = ["*"]
-# Додаємо CORS middleware
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,  # Дозволяємо запити з цього домену
@@ -21,32 +23,48 @@ app.add_middleware(
     allow_headers=["*"],  # Дозволяємо всі заголовки
 )
 
+# Attach rate limiter to the application state
 app.state.limiter = limiter
+
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Handle rate limit exceptions.
+
+    :param request: Incoming request object.
+    :param exc: Raised RateLimitExceeded exception.
+    :return: JSON response with a 429 status code.
+    """
     return JSONResponse(
         status_code=429,
-        content={"error": "Перевищено ліміт запитів. Спробуйте пізніше."},
+        content={"error": "Rate limit exceeded. Try again later."},
     )
 
-# Підключаємо маршрути
+# Include API routers with prefixes
 app.include_router(contacts.router, prefix="/api")
 app.include_router(utils.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 
-# Функція для застосування міграцій
+
 async def run_migrations():
+    """
+    Apply database migrations using Alembic.
+    """
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
 
-# Запуск міграцій при старті додатка
+
 @app.on_event("startup")
 async def startup_event():
+    """
+    Run database migrations when the application starts.
+    """
     await run_migrations()
 
 if __name__ == "__main__":
     import uvicorn
 
+    # Start FastAPI server with Uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
