@@ -1,12 +1,18 @@
 from pathlib import Path
 
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from fastapi_mail import (
+    FastMail,
+    MessageSchema,
+    ConnectionConfig,
+    MessageType
+)
 from fastapi_mail.errors import ConnectionErrors
 from pydantic import EmailStr
 
-from src.services.auth import create_email_token
 from src.conf.config import settings
+from src.services.auth import create_email_token
 
+# Configuration for email sending
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
@@ -18,10 +24,18 @@ conf = ConnectionConfig(
     MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
     USE_CREDENTIALS=settings.USE_CREDENTIALS,
     VALIDATE_CERTS=settings.VALIDATE_CERTS,
-    TEMPLATE_FOLDER=Path(__file__).parent.parent / 'services' / 'templates',
+    TEMPLATE_FOLDER=Path(__file__).parent.parent / "services" / "templates",
 )
 
+
 async def send_email(email: EmailStr, username: str, host: str):
+    """
+    Sends an email for account verification.
+
+    :param email: Recipient's email address.
+    :param username: User's username.
+    :param host: Base URL of the application.
+    """
     try:
         token_verification = create_email_token({"sub": email})
         message = MessageSchema(
@@ -38,4 +52,4 @@ async def send_email(email: EmailStr, username: str, host: str):
         fm = FastMail(conf)
         await fm.send_message(message, template_name="verify_email.html")
     except ConnectionErrors as err:
-        print(err)
+        print(err)  # Log the error if sending fails

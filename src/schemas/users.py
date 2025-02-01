@@ -1,7 +1,11 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr, validator
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class User(BaseModel):
+    """
+    Schema representing a user model with basic details.
+    """
+
     id: int
     username: str
     email: str
@@ -9,21 +13,38 @@ class User(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-# Схема для запиту реєстрації
+
 class UserCreate(BaseModel):
+    """
+    Schema for user registration request.
+    """
+
     username: str
     email: str
     password: str
 
-# Схема для даних при логін
+
 class UserLogin(BaseModel):
+    """
+    Schema for user login request.
+    """
+
     email: str
     password: str
 
-# Схема для токену
+
 class Token(BaseModel):
+    """
+    Schema for authentication token response.
+    """
+
     access_token: str
     token_type: str
 
+
 class RequestEmail(BaseModel):
+    """
+    Schema for requesting email verification.
+    """
+
     email: EmailStr
