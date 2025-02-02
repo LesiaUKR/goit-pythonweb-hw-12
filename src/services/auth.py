@@ -23,20 +23,26 @@ class Hash:
 
     def verify_password(self, plain_password, hashed_password):
         """
-        Verify if a given plain password matches the hashed password.
+        Verifies if a given plain password matches the hashed password.
 
-        :param plain_password: User's raw password.
-        :param hashed_password: Stored hashed password.
-        :return: Boolean indicating whether passwords match.
+        Args:
+            plain_password (str): User's raw password.
+            hashed_password (str): Stored hashed password.
+
+        Returns:
+            bool: True if passwords match, False otherwise.
         """
         return self.pwd_context.verify(plain_password, hashed_password)
 
     def get_password_hash(self, password: str):
         """
-        Generate a hashed password.
+        Generates a hashed password.
 
-        :param password: User's raw password.
-        :return: Hashed password.
+        Args:
+            password (str): User's raw password.
+
+        Returns:
+            str: Hashed password.
         """
         return self.pwd_context.hash(password)
 
@@ -46,11 +52,14 @@ oauth2_scheme = HTTPBearer()
 
 async def create_access_token(data: dict, expires_delta: Optional[int] = None):
     """
-    Generate a new JWT access token.
+    Generates a new JWT access token.
 
-    :param data: Dictionary containing payload data.
-    :param expires_delta: Expiration time in seconds.
-    :return: Encoded JWT token.
+    Args:
+        data (dict): Dictionary containing payload data.
+        expires_delta (Optional[int]): Expiration time in seconds.
+
+    Returns:
+        str: Encoded JWT token.
     """
     to_encode = data.copy()
     if expires_delta:
@@ -72,11 +81,17 @@ async def get_current_user(
     db: Session = Depends(get_db),
 ):
     """
-    Retrieve the current authenticated user from the JWT token.
+    Retrieves the current authenticated user from the JWT token.
 
-    :param token: JWT token containing user credentials.
-    :param db: Database session.
-    :return: Authenticated user object.
+    Args:
+        token (HTTPAuthorizationCredentials): JWT token containing user credentials.
+        db (Session): Database session.
+
+    Returns:
+        User: Authenticated user object.
+
+    Raises:
+        HTTPException: If token is invalid or user not found.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -108,10 +123,13 @@ async def get_current_user(
 
 def create_email_token(data: dict):
     """
-    Generate a JWT token for email verification.
+    Generates a JWT token for email verification.
 
-    :param data: Dictionary containing payload data.
-    :return: Encoded JWT token.
+    Args:
+        data (dict): Dictionary containing payload data.
+
+    Returns:
+        str: Encoded JWT token.
     """
     to_encode = data.copy()
     expire = datetime.now(UTC) + timedelta(days=7)
@@ -124,10 +142,16 @@ def create_email_token(data: dict):
 
 async def get_email_from_token(token: str):
     """
-    Decode an email verification token and retrieve the email.
+    Decodes an email verification token and retrieves the email.
 
-    :param token: Encoded JWT token.
-    :return: Decoded email from the token.
+    Args:
+        token (str): Encoded JWT token.
+
+    Returns:
+        str: Decoded email from the token.
+
+    Raises:
+        HTTPException: If the token is invalid.
     """
     try:
         payload = jwt.decode(

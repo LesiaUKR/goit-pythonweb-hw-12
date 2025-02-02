@@ -80,6 +80,11 @@ async def login_user(body: UserLogin, db: Session = Depends(get_db)):
     """
     user_service = UserService(db)
     user = await user_service.get_user_by_email(body.email)
+    if user and not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email is not verified.",
+        )
     if not user or not Hash().verify_password(body.password,
                                               user.hashed_password):
         raise HTTPException(
