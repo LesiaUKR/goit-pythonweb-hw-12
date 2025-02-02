@@ -23,13 +23,15 @@ def test_signup(client, monkeypatch):
     assert "hashed_password" not in data
     assert "avatar" in data
 
-def test_repeat_signup(client, monkeypatch):
+@pytest.mark.asyncio
+async def test_repeat_signup(client, monkeypatch):
     mock_send_email = Mock()
     monkeypatch.setattr("src.api.auth.send_email", mock_send_email)
     response = client.post("api/auth/register", json=user_data)
     assert response.status_code == 409, response.text
     data = response.json()
     assert data["detail"] == "A user with this email already exists."
+
 
 def test_not_confirmed_login(client):
     response = client.post("api/auth/login",
@@ -76,4 +78,3 @@ def test_validation_error_login(client):
     assert response.status_code == 422, response.text
     data = response.json()
     assert "detail" in data
-
