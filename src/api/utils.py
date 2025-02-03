@@ -40,7 +40,7 @@ async def healthchecker(db: AsyncSession = Depends(get_db)):
         return {"message": "Welcome to FastAPI!"}
     except Exception as e:
         # Log the error for debugging purposes
-        print(e)
+        print(f"DB error: {e}")
         # Raise an HTTP exception if the database connection fails
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

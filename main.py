@@ -7,6 +7,25 @@ from starlette.responses import JSONResponse
 
 from src.api import auth, contacts, users, utils
 from src.services.limiter import limiter
+from src.services.redis_cache import redis_cache
+
+import logging
+import sys
+
+# Налаштування логування
+logging.basicConfig(
+    level=logging.DEBUG,  # Встановлюємо рівень DEBUG
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Логи будуть виводитися в консоль
+    ]
+)
+
+# Створюємо логер для FastAPI та Uvicorn
+logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)
+logging.getLogger("uvicorn.access").setLevel(logging.DEBUG)
+logging.getLogger("fastapi.middleware").setLevel(logging.DEBUG)
 
 # Create FastAPI application instance
 app = FastAPI()
@@ -62,7 +81,7 @@ async def startup_event():
     Run database migrations when the application starts.
     """
     await run_migrations()
-
+    await redis_cache.connect()
 if __name__ == "__main__":
     import uvicorn
 

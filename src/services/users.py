@@ -79,3 +79,17 @@ class UserService:
         :return: Updated user object.
         """
         return await self.repository.update_avatar_url(email, url)
+
+    async def reset_password(self, user_id: int, password: str):
+        """
+        Скидає пароль користувача.
+
+        Аргументи:
+            user_id: ID користувача.
+            password: Новий пароль для користувача.
+
+        Повертає:
+            User: Оновлений користувач.
+        """
+        # Скидання пароля користувача
+        return await self.repository.reset_password(user_id, password)

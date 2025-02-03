@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class User(BaseModel):
@@ -48,3 +48,15 @@ class RequestEmail(BaseModel):
     """
 
     email: EmailStr
+
+class ResetPassword(BaseModel):
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+class UserCacheModel(BaseModel):
+    id: int
+    username: str
+    email: str
+    is_verified: bool
+    role: str
+
+    model_config = ConfigDict(from_attributes=True)

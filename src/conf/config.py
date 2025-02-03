@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     CLD_API_KEY: int
     CLD_API_SECRET: str
 
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_DB: int
+
     @property
     def database_url(self) -> str:
         """

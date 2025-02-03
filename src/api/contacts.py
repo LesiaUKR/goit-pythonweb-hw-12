@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.database import get_db
@@ -12,7 +12,7 @@ from src.services.contacts import ContactService
 router = APIRouter()
 
 
-@router.post("/contacts/", response_model=ContactResponse)
+@router.post("/contacts/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
 async def create_contact(
     body: ContactModel,
     db: AsyncSession = Depends(get_db),

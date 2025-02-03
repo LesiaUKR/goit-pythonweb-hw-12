@@ -1,12 +1,14 @@
+import logging
 from fastapi import (APIRouter, BackgroundTasks, Depends, HTTPException,
                      Request, status)
 from sqlalchemy.orm import Session
 
 from src.database.database import get_db
-from src.schemas.users import RequestEmail, Token, User, UserCreate, UserLogin
+from src.schemas.users import RequestEmail, Token, User, UserCreate, UserLogin, ResetPassword, UserCacheModel
 from src.services.auth import create_access_token, get_email_from_token, Hash
-from src.services.email import send_email
+from src.services.email import send_email,send_reset_password_email
 from src.services.users import UserService
+from src.services.redis_cache import redis_cache
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -94,6 +96,19 @@ async def login_user(body: UserLogin, db: Session = Depends(get_db)):
         )
 
     access_token = await create_access_token(data={"sub": user.username})
+
+    cached_user = UserCacheModel(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        is_verified=user.is_verified,
+        role=user.role
+    ).dict()
+
+    if redis_cache.redis:
+        await redis_cache.set(f"user:{user.username}", cached_user,
+                              expire=3600)
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -157,3 +172,77 @@ async def request_email(
             send_email, user.email, user.username, request.base_url
         )
     return {"message": "Check your email for verification instructions."}
+
+
+@router.post("/forgot-password")
+async def forgot_password_request(
+    body: RequestEmail,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Sends an email with a password reset link.
+    """
+    logging.info(f"Запит на скидання пароля для {body.email}")
+
+    user_service = UserService(db)
+    user = await user_service.get_user_by_email(body.email)
+
+    if not user:
+        logging.error(f"Користувач {body.email} не знайдений")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if not user.is_verified:
+        logging.error(f"Користувач {body.email} не підтвердив email")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is not verified",
+        )
+    try:
+        # Генеруємо токен для скидання пароля
+        reset_token = await create_access_token(data={"sub": user.email})
+        logging.info(f"Токен для скидання пароля згенеровано: {reset_token}")
+        # Відправляємо email
+        background_tasks.add_task(
+            send_reset_password_email,
+            user.email,
+            user.username,
+            str(request.base_url).rstrip("/"),
+            reset_token,
+        )
+        logging.info(f"Email з інструкціями відправлено на {user.email}")
+
+        return {"message": "Перевірте свою електронну пошту для скидання пароля"}
+    except Exception as e:
+        logging.error(f"Помилка скидання пароля: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@router.post("/reset-password/{token}")
+async def reset_password(token: str, body: ResetPassword, db: Session = Depends(get_db)):
+    """
+    Set a new password for the user.
+    """
+    email = await get_email_from_token(token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token",
+        )
+
+    user_service = UserService(db)
+    user = await user_service.get_user_by_email(email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Хешування нового пароля
+    hashed_password = Hash().get_password_hash(body.new_password)
+    await user_service.reset_password(user.id, hashed_password)
+
+    return {"message": "Password successfully changed"}

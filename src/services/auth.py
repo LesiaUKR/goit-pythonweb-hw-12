@@ -11,8 +11,10 @@ from jose import JWTError, jwt
 
 from src.conf.config import settings
 from src.database.database import get_db
+from src.database.models import User, UserRole
 from src.services.users import UserService
-
+from src.services.redis_cache import redis_cache
+from src.schemas.users import UserCacheModel
 
 class Hash:
     """
@@ -114,10 +116,29 @@ async def get_current_user(
         logging.error(f"JWT Error: {e}")
         raise credentials_exception
 
+    user_data = await redis_cache.get(f"user:{username}")
+    if user_data:
+        logging.info(f"✅ Користувач {username} знайдений у кеші Redis")
+        return UserCacheModel(**user_data)  # 🔹 Використання правильної моделі
+
+    # Якщо користувача немає в Redis – шукаємо в базі
     user_service = UserService(db)
     user = await user_service.get_user_by_username(username)
-    if user is None:
+    if not user:
         raise credentials_exception
+
+    # Кешуємо в Redis
+    cached_user = UserCacheModel(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        is_verified=user.is_verified,
+        role=user.role
+    ).dict()
+
+    await redis_cache.set(f"user:{user.username}", cached_user, expire=3600)
+    logging.info(f"💾 Користувач {username} закешований у Redis")
+
     return user
 
 
@@ -165,3 +186,35 @@ async def get_email_from_token(token: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid email verification token",
         )
+
+async def get_password_from_token(token: str) -> str:
+    """
+    Отримує пароль з токену для скидання пароля.
+    """
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+        )
+        password = payload.get("password")  # Використати get, щоб уникнути KeyError
+        if not password:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Token does not contain a password",
+            )
+        return password
+    except JWTError as e:
+        logging.error(f"JWT Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Wrong token",
+        )
+
+def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Перевіряє, чи є поточний користувач адміністратором.
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    return current_user
+
+

@@ -70,3 +70,12 @@ async def get_token():
     token = await create_access_token(data={"sub": test_user["username"]})
     return token
 
+@pytest_asyncio.fixture(scope="function")
+async def db_session():
+    """Provides a fresh database session for each test case.
+
+    Ensures a clean state by using an in-memory SQLite database.
+    """
+    async with TestingSessionLocal() as session:
+        yield session
+        await session.rollback()

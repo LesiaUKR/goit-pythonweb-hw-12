@@ -1,3 +1,4 @@
+from enum import Enum
 from sqlalchemy import (
     Boolean,
     Column,
@@ -7,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    Enum as SqlEnum,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -14,6 +16,17 @@ from sqlalchemy.orm import relationship
 # Base class for ORM models
 Base = declarative_base()
 
+class UserRole(str, Enum):
+    """
+    Перерахунок ролей користувачів.
+
+    Значення:
+    - USER: Звичайний користувач.
+    - ADMIN: Адміністратор.
+    """
+
+    USER = "user"
+    ADMIN = "admin"
 
 class Contact(Base):
     """
@@ -76,3 +89,4 @@ class User(Base):
     created_at = Column(DateTime, default=func.now())
     avatar = Column(String(255), nullable=True)
     is_verified = Column(Boolean, default=False)
+    role = Column(SqlEnum(UserRole), default=UserRole.USER, nullable=False)

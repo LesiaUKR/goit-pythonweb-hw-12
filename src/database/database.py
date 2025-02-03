@@ -3,6 +3,12 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from src.conf.config import settings
 
+import logging
+from sqlalchemy.engine import Engine
+
+# Увімкнення логів SQL-запитів
+logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
+
 # Asynchronous database connection URL for PostgreSQL
 SQLALCHEMY_DATABASE_URL = settings.database_url.replace(
     "postgresql://", "postgresql+asyncpg://"
