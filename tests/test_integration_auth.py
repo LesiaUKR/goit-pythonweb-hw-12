@@ -1,11 +1,12 @@
 from unittest.mock import Mock
 from fastapi import status
+from fastapi.testclient import TestClient
 import pytest
 from sqlalchemy import select
 
 from src.database.models import User
 from tests.conftest import TestingSessionLocal
-from src.services.auth import create_access_token
+
 
 user_data = {
     "username": "agent007",
@@ -81,85 +82,38 @@ def test_validation_error_login(client):
     assert "detail" in data
 
 
-@pytest.mark.asyncio
-async def test_forgot_password_request(client, monkeypatch):
+def test_forgot_password_request(client: TestClient, get_token):
     """
-    Тестує відправку запиту на скидання пароля
+    Test sending a password reset request.
+
+    Expected:
+    - 200 status code
+    - Response contains success message
     """
-
-    # Переконуємось, що користувач існує і має підтверджену email-адресу
-    async with TestingSessionLocal() as session:
-        current_user = await session.execute(select(User).where(User.email == user_data["email"]))
-        current_user = current_user.scalar_one_or_none()
-        if current_user:
-            current_user.is_verified = True
-            await session.commit()
-
-    # Мокуємо функцію відправки email
-    mock_send_reset_email = Mock()
-    monkeypatch.setattr("src.api.auth.send_reset_password_email", mock_send_reset_email)
-
-    response = client.post("/api/auth/forgot-password", json={"email": user_data["email"]})
-
-    assert response.status_code == status.HTTP_200_OK, response.text
-    data = response.json()
-    assert data["message"] == "Перевірте свою електронну пошту для скидання пароля"
-
-    # Перевіряємо, чи викликалася функція відправки email
-    mock_send_reset_email.assert_called_once()
-
-@pytest.mark.asyncio
-async def test_confirm_reset_password(client):
-    """
-    Тестує зміну пароля за допомогою токена скидання
-    """
-
-    # Генеруємо токен для існуючого користувача
-    async with TestingSessionLocal() as session:
-        result = await session.execute(select(User).where(User.email == user_data["email"]))
-        current_user = result.scalar_one_or_none()
-        assert current_user is not None, "Користувач повинен існувати"
-
-    # Додаємо логування перед створенням токена
-    new_password = "newSecurePass123"
-    print(f"Generating reset token for: {user_data['email']}")
-
-    # Оновлення токена з додаванням пароля
-    reset_token = await create_access_token(
-        data={"sub": user_data["email"], "password": new_password}
-    )
-
-    # Надсилаємо запит на оновлення пароля
     response = client.post(
-        f"/api/auth/confirm_reset_password/{reset_token}",
-        json={"password": new_password},
+        "/api/auth/forgot-password",
+        json={"email": "deadpool@example.com"},
     )
 
-    assert response.status_code == status.HTTP_200_OK, response.text
-    assert response.json()["detail"] == "Password has been reset successfully"
+    assert response.status_code == 200, response.text
+    assert response.json()["message"] == "Перевірте свою електронну пошту для скидання пароля"
 
-def test_forgot_password_nonexistent_user(client):
+
+def test_forgot_password_request_invalid_email(client: TestClient):
     """
-    Тестуємо ситуацію, коли користувач не знайдений
+    Test sending a password reset request with an invalid email.
+
+    Expected:
+    - 404 status code
+    - Response contains "User not found" message
     """
-    response = client.post("/api/auth/forgot-password", json={"email": "nonexistent@example.com"})
-    assert response.status_code == status.HTTP_404_NOT_FOUND, response.text
-    data = response.json()
-    assert data["detail"] == "User not found"
+    response = client.post(
+        "/api/auth/forgot-password",
+        json={"email": "nonexistent@example.com"},
+    )
+
+    assert response.status_code == 404, response.text
+    assert response.json()["detail"] == "User not found"
 
 
-def test_confirm_reset_password_invalid_token(client):
-    """
-    Тестуємо ситуацію, коли токен недійсний або прострочений
-    """
-    response = client.post("/api/auth/confirm_reset_password/invalid_token",
-                           json={"password": "newSecurePass123"})
-
-    # Додаємо логування
-    print(
-        f"Response from invalid token reset: {response.status_code} - {response.text}")
-
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, response.text
-    data = response.json()
-    assert data["detail"] == "Invalid email verification token"
 

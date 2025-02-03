@@ -43,6 +43,7 @@ def init_models_wrap():
                 hashed_password=hash_password,
                 is_verified=True,
                 avatar="<https://twitter.com/gravatar>",
+                role="admin"
             )
             session.add(current_user)
             await session.commit()
@@ -67,7 +68,7 @@ def client():
 
 @pytest_asyncio.fixture()
 async def get_token():
-    token = await create_access_token(data={"sub": test_user["username"]})
+    token = await create_access_token(data={"sub": test_user["username"], "role": "admin"})  # 🔹 Додаємо роль admin
     return token
 
 @pytest_asyncio.fixture(scope="function")
@@ -79,3 +80,9 @@ async def db_session():
     async with TestingSessionLocal() as session:
         yield session
         await session.rollback()
+
+@pytest_asyncio.fixture()
+async def get_reset_token(test_user):
+    """Генерує токен для скидання пароля."""
+    reset_token = await create_access_token(data={"sub": test_user["email"]})
+    return reset_token
