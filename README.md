@@ -73,3 +73,4 @@ Use Docker Compose to launch all services and databases of your application.
 ![Кeset_password_email](assets/reset_password_email.png)
 ![Test_coverage_75_percents](assets/test_coverage_75_percents.png)
 ![Test_coverage_75_percents_2](assets/test_coverage_75_percents_2.png)
+![Docker_container](assets/docker_container.png)
